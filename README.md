@@ -82,6 +82,11 @@ Code Gate intercepts the commit:
 
 The `code-gate.config.js` in your project root controls all behaviors.
 
+### Config UI (Preview Server)
+
+When the review preview server is running, open `http://localhost:<port>/config` to edit the configuration in a web page.
+Changes are saved back to your project config file.
+
 ### Basic Configuration
 
 ```javascript
@@ -115,6 +120,12 @@ export default {
   limits: {
     maxDiffLines: 10000,
     maxFiles: 100
+  },
+  branchOverrides: {
+    // main: {
+    //   provider: 'deepseek',
+    //   providerOptions: { deepseek: { model: 'deepseek-chat' } }
+    // }
   },
   prompt: 'as a senior code reviewer, please review the code changes and provide feedback on security, performance, code style, and test coverage. Highlight any issues or areas for improvement, and offer concrete suggestions with code examples if possible.',
   output: {
@@ -177,6 +188,7 @@ export DEEPSEEK_API_KEY=[your-deepseek-api-key]
 | `language` | `string` | `'en'` | UI & Prompt Language. Options: `'en'`, `'zh-CN'`, `'zh-TW'`, `'ja'`, `'ko'`, `'de'`, `'fr'` |
 | `prompt` | `string` | `...` | Universal system prompt sent to AI |
 | `output.dir` | `string` | `'.review-logs'` | Output directory for local reports and static assets |
+| `branchOverrides` | `object` | `{}` | Per-branch config overrides (e.g. change models per branch) |
 
 ### providerOptions Configuration
 

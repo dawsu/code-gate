@@ -3,6 +3,7 @@ import path from 'node:path'
 import yaml from 'yaml'
 import { Config } from './types.js'
 import { defaultConfig } from './defaults.js'
+import { getBranchName } from '../core/git.js'
 
 export * from './types.js'
 export * from './defaults.js'
@@ -42,24 +43,25 @@ async function readFile(p: string): Promise<any> {
 }
 
 function isObject(item: any) {
-  return (item && typeof item === 'object' && !Array.isArray(item));
+  return (item && typeof item === 'object' && !Array.isArray(item))
 }
 
 function mergeDeep(target: any, ...sources: any[]): any {
-  if (!sources.length) return target;
-  const source = sources.shift();
+  if (!sources.length) return target
+  const source = sources.shift()
 
   if (isObject(target) && isObject(source)) {
     for (const key in source) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue
       if (isObject(source[key])) {
-        if (!target[key]) Object.assign(target, { [key]: {} });
-        mergeDeep(target[key], source[key]);
+        if (!target[key]) Object.assign(target, { [key]: {} })
+        mergeDeep(target[key], source[key])
       } else {
-        Object.assign(target, { [key]: source[key] });
+        Object.assign(target, { [key]: source[key] })
       }
     }
   }
-  return mergeDeep(target, ...sources);
+  return mergeDeep(target, ...sources)
 }
 
 export async function loadConfig(cwd = process.cwd()): Promise<Config> {
@@ -70,9 +72,45 @@ export async function loadConfig(cwd = process.cwd()): Promise<Config> {
     const user = (await readFile(p)) || {}
     // Deep clone default config to avoid mutation issues
     const base = JSON.parse(JSON.stringify(defaultConfig))
-    return mergeDeep(base, user)
+    const merged = mergeDeep(base, user)
+    const branch = getBranchName(cwd)
+    const overrides = branch && merged.branchOverrides ? merged.branchOverrides[branch] : undefined
+    if (overrides && typeof overrides === 'object') {
+      return mergeDeep(merged, overrides)
+    }
+    return merged
   } catch (e) {
     console.error(`Failed to load config from ${p}:`, e)
     return { ...defaultConfig }
   }
+}
+
+export function resolveConfigPath(cwd = process.cwd()): string {
+  return findConfigFile(cwd) || path.join(cwd, '.codegate.js')
+}
+
+export async function loadUserConfig(cwd = process.cwd()): Promise<{ path: string; config: any; exists: boolean }> {
+  const p = findConfigFile(cwd)
+  if (!p) {
+    return { path: path.join(cwd, '.codegate.js'), config: {}, exists: false }
+  }
+  try {
+    const user = (await readFile(p)) || {}
+    return { path: p, config: user, exists: true }
+  } catch (e) {
+    console.error(`Failed to load user config from ${p}:`, e)
+    return { path: p, config: {}, exists: true }
+  }
+}
+
+export function mergeConfig(target: any, ...sources: any[]): any {
+  return mergeDeep(target, ...sources)
+}
+
+export function serializeConfig(config: any, filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase()
+  if (ext === '.yaml' || ext === '.yml') return yaml.stringify(config)
+  if (ext === '.cjs') return `module.exports = ${JSON.stringify(config, null, 2)}\n`
+  if (ext === '.js' || ext === '.mjs') return `export default ${JSON.stringify(config, null, 2)}\n`
+  return JSON.stringify(config, null, 2)
 }

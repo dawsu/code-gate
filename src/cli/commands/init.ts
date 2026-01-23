@@ -92,6 +92,12 @@ function generateConfig(cwd: string, force = false) {
     maxDiffLines: 10000,
     maxFiles: 100
   },
+  branchOverrides: {
+    // main: {
+    //   provider: 'deepseek',
+    //   providerOptions: { deepseek: { model: 'deepseek-chat' } }
+    // }
+  },
   reviewMode: 'files',
   language: 'en',
   prompt: 'As a senior code review engineer, review this change from the perspectives of security, performance, code style, and test coverage. Point out issues and suggestions for improvement, and provide necessary example patches.',

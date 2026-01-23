@@ -3,8 +3,8 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import micromatch from 'micromatch'
 
-function runGit(args: string[]) {
-  const res = spawnSync('git', args, { encoding: 'utf8' })
+function runGit(args: string[], cwd = process.cwd()) {
+  const res = spawnSync('git', args, { encoding: 'utf8', cwd })
   if (res.status !== 0) return ''
   return res.stdout || ''
 }
@@ -46,8 +46,8 @@ export function filterFiles(files: string[], fileTypes?: string[], exclude?: str
   return list
 }
 
-export function getBranchName(): string {
-  return runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
+export function getBranchName(cwd = process.cwd()): string {
+  return runGit(['rev-parse', '--abbrev-ref', 'HEAD'], cwd).trim()
 }
 
 export function getDiffStats(): string {

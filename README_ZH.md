@@ -82,6 +82,10 @@ Code Gate 会自动拦截提交：
 
 在项目根目录下 `.code-gate.js` 配置
 
+### 配置页面（预览服务）
+
+当预览服务启动后，访问 `http://localhost:<port>/config` 即可在网页中调整配置，保存后会回写到项目配置文件。
+
 ### 基础配置示例
 
 ```javascript
@@ -115,6 +119,12 @@ export default {
   limits: {
     maxDiffLines: 10000,
     maxFiles: 100
+  },
+  branchOverrides: {
+    // main: {
+    //   provider: 'deepseek',
+    //   providerOptions: { deepseek: { model: 'deepseek-chat' } }
+    // }
   },
   prompt: '作为资深代码审查工程师，从安全、性能、代码风格与测试覆盖角度审查本次变更，指出问题与改进建议，并给出必要的示例补丁。',
   output: {
@@ -177,6 +187,7 @@ export DEEPSEEK_API_KEY=[your-deepseek-api-key]
 | `language` | `string` | `'en'` | 界面与 Prompt 语言。可选值：`'en'`, `'zh-CN'`, `'zh-TW'`, `'ja'`, `'ko'`, `'de'`, `'fr'` |
 | `prompt` | `string` | `...` | 发送给 AI 的通用系统提示词 |
 | `output.dir` | `string` | `'.review-logs'` | 本地生成报告和静态资源的输出目录 |
+| `branchOverrides` | `object` | `{}` | 按分支覆盖配置（例如不同分支使用不同模型） |
 
 ### providerOptions 配置
 每个 Provider 可配置以下字段，支持 `request` 选项控制请求超时与重试。

@@ -57,4 +57,5 @@ export interface Config {
   output?: {
     dir?: string
   }
+  branchOverrides?: Record<string, Partial<Config>>
 }
