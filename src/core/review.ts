@@ -1,6 +1,19 @@
 import { loadConfig } from '../config/index.js'
 import { setLanguage, t } from '../locales/index.js'
-import { getStagedFiles, getStagedDiff, filterFiles, getStagedDiffForFile, getBranchName, getDiffStats, getCommitMessage } from './git.js'
+import { 
+  getStagedFiles, 
+  getStagedDiff, 
+  filterFiles, 
+  getStagedDiffForFile, 
+  getBranchName, 
+  getDiffStats, 
+  getCommitMessage,
+  getFilesFromCommit,
+  getDiffFromCommit,
+  getDiffForFileFromCommit,
+  getCommitMessageFromHash,
+  getDiffStatsFromCommit
+} from './git.js'
 import { createLLMProvider } from '../llm/index.js'
 import { renderHTMLLive, renderHTMLTabs } from '../ui/render/html.js'
 import { serveReview, saveOutput, triggerOpen } from '../ui/server.js'
@@ -10,6 +23,7 @@ export interface ReviewFlowOptions {
   onProgress?: (file: string, index: number, total: number) => void
   onServerReady?: (url: string) => void
   onStart?: (total: number) => void
+  commitHash?: string
 }
 
 export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boolean> {
@@ -17,12 +31,19 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   if (cfg.language) {
     setLanguage(cfg.language)
   }
+  
+  const getFiles = opts.commitHash ? () => getFilesFromCommit(opts.commitHash!) : getStagedFiles
+  const getDiff = opts.commitHash ? () => getDiffFromCommit(opts.commitHash!) : getStagedDiff
+  const getFileDiff = opts.commitHash ? (f: string) => getDiffForFileFromCommit(opts.commitHash!, f) : getStagedDiffForFile
+  const getMsg = opts.commitHash ? () => getCommitMessageFromHash(opts.commitHash!) : getCommitMessage
+  const getStats = opts.commitHash ? () => getDiffStatsFromCommit(opts.commitHash!) : getDiffStats
+
   const provider = createLLMProvider(cfg)
   const providerName = cfg.provider
   const mode = (cfg.reviewMode || 'files') as 'summary' | 'files' | 'both'
   const modelUsed = cfg.providerOptions?.[providerName]?.model || 'unknown'
 
-  const files = filterFiles(getStagedFiles(), cfg.fileTypes, cfg.exclude)
+  const files = filterFiles(getFiles(), cfg.fileTypes, cfg.exclude)
   if (files.length === 0) {
     // info('code-gate: 没有可审查的文件')
     return true
@@ -32,7 +53,7 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   // But strictly speaking, we might want to skip this check for 'files' mode to avoid large buffer issues
   let diff = ''
   if (mode === 'summary' || mode === 'both') {
-    diff = getStagedDiff()
+    diff = getDiff()
     if (!diff) {
       warn('code-gate: 无法获取完整 Diff (可能文件过大)，将跳过 Summary 生成')
       // Fallback: Disable summary mode or proceed with empty diff?
@@ -50,7 +71,10 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   if (providerName === 'ollama') {
     try {
       const baseURL = cfg.providerOptions?.ollama?.baseURL || 'http://localhost:11434'
-      const checkRes = await fetch(baseURL).catch(() => null)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 1000) // 1s timeout
+      const checkRes = await fetch(baseURL, { signal: controller.signal }).catch(() => null)
+      clearTimeout(timeoutId)
       if (!checkRes) {
         warn(t('cli.ollamaCheckFailed'))
         // Don't block, but user should know AI might fail
@@ -94,8 +118,8 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   
   const formattedTime = now.toLocaleString()
   const branchName = getBranchName()
-  const commitMsg = getCommitMessage()
-  const diffStats = getDiffStats()
+  const commitMsg = getMsg()
+  const diffStats = getStats()
   
   // Prefer commit message, fallback to diff stats
   const info = commitMsg || diffStats
@@ -137,7 +161,7 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   let completedCount = 0
 
   async function runTask(f: string) {
-    let fdiff = getStagedDiffForFile(f)
+    let fdiff = getFileDiff(f)
     
     // Check for max diff lines
     const maxDiffLines = cfg.limits?.maxDiffLines || 10000

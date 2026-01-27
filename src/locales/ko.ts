@@ -17,6 +17,7 @@ export const ko: Translation = {
     commitConfirmed: '커밋 확인됨, 계속 진행...',
     diffTruncated: '\n...(길이 제한으로 인해 Diff가 잘렸습니다. 총 라인 수: {lines})',
     ollamaCheckFailed: '경고: Ollama 서비스가 감지되지 않거나 연결할 수 없습니다. AI 리뷰가 실패할 수 있습니다.',
+    pressEnterToExit: '종료하려면 Enter 키를 누르세요...',
   },
   ui: {
     title: 'Code Review',

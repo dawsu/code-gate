@@ -31,7 +31,7 @@ function findConfigFile(cwd: string): string | undefined {
 
 async function readFile(p: string): Promise<any> {
   const ext = path.extname(p).toLowerCase()
-  if (ext === '.js' || ext === '.cjs') {
+  if (ext === '.js' || ext === '.cjs' || ext === '.mjs') {
     const { pathToFileURL } = await import('node:url')
     const mod = await import(pathToFileURL(p).href)
     return mod?.default ?? mod

@@ -15,6 +15,7 @@ export interface Translation {
     commitConfirmed: string
     diffTruncated: string // with {lines} placeholder
     ollamaCheckFailed: string
+    pressEnterToExit: string
   }
   ui: {
     title: string

@@ -76,6 +76,12 @@ export function getDiffStats(): string {
   return runGit(['diff', '--staged', '--shortstat']).trim()
 }
 
+export function getDiffStatsFromCommit(hash: string): string {
+  const root = getGitRoot()
+  // git show --stat --format="" <hash>
+  return runGit(['show', '--stat', '--format=', hash], root).trim()
+}
+
 function getPendingCommitMessage(): string | null {
   try {
     let pid = process.ppid
@@ -141,4 +147,30 @@ export function getCommitMessage(): string {
 
   // 3. Do NOT fallback to HEAD commit message to avoid confusion
   return ''
+}
+
+export function getFilesFromCommit(hash: string): string[] {
+  const root = getGitRoot()
+  const out = runGit(['diff-tree', '--no-commit-id', '--name-only', '-r', hash], root)
+  const files = out
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return files
+}
+
+export function getDiffFromCommit(hash: string): string {
+  const root = getGitRoot()
+  // Use git show with empty pretty format to get just the diff
+  return runGit(['show', '--pretty=', hash], root)
+}
+
+export function getDiffForFileFromCommit(hash: string, file: string): string {
+  const root = getGitRoot()
+  return runGit(['show', '--pretty=', hash, '--', file], root)
+}
+
+export function getCommitMessageFromHash(hash: string): string {
+  const root = getGitRoot()
+  return runGit(['log', '-1', '--pretty=%B', hash], root).trim()
 }

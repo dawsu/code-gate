@@ -17,6 +17,7 @@ export const fr: Translation = {
     commitConfirmed: 'Commit confirmé, poursuite de l\'opération...',
     diffTruncated: '\n...(Diff tronqué en raison de la longueur, nombre total de lignes : {lines})',
     ollamaCheckFailed: 'Attention : le service Ollama semble indisponible. La révision AI pourrait échouer.',
+    pressEnterToExit: 'Appuyez sur Entrée pour quitter...',
   },
   ui: {
     title: 'Code Review',

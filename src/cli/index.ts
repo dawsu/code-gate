@@ -2,6 +2,7 @@ import 'dotenv/config'
 import { Command } from 'commander'
 import { runHook } from './commands/hook.js'
 import { runInit } from './commands/init.js'
+import { runReview } from './commands/review.js'
 
 export async function run() {
   const program = new Command()
@@ -15,6 +16,13 @@ export async function run() {
     .option('--no-config', 'do not generate config file')
     .action(async (opts) => {
       await runInit(opts.method as string, !!opts.config, !!opts.force)
+    })
+
+  program
+    .command('review [commit]')
+    .description('Review a specific commit')
+    .action(async (commit) => {
+      await runReview(commit)
     })
 
   program

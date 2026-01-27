@@ -17,6 +17,7 @@ export const zhTW: Translation = {
     commitConfirmed: '提交確認，繼續執行...',
     diffTruncated: '\n...(Diff 過長已截斷，總行數: {lines})',
     ollamaCheckFailed: '警告: 檢測到 Ollama 服務未啟動或無法連接，AI Review 可能會失敗。',
+    pressEnterToExit: '按回車鍵退出...',
   },
   ui: {
     title: 'Code Review',
