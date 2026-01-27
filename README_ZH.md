@@ -8,7 +8,9 @@
 
 **您的轻量级本地 AI 代码审查助手**
 
-Code Gate 是一款无缝集成到 Git 工作流中的智能代码审查工具。在您执行 `git commit` 时，它会自动分析暂存区（Staged）的代码变更，利用本地 LLM (Ollama) 或云端 AI 服务为您提供即时的代码质量反馈、安全建议和优化方案。
+Code Gate 是一款无缝集成到 Git 工作流中的智能代码AI审查工具。可视化展示代码变更与 AI 建议，帮助您快速定位问题并优化代码质量。
+
+支持通过 npx 零配置运行、npm/yarn/pnpm 包管理集成以及 Git Hook 自动化审查，灵活适配各种开发工作流。
 
 <div align="left">
   <img src="assets/review_cn.png" alt="Code Gate example" width="100%" />
@@ -24,69 +26,14 @@ Code Gate 是一款无缝集成到 Git 工作流中的智能代码审查工具�
 - **📊 可视化报告**：生成直观的 HTML 审查报告，提供清晰的 Diff 对比与 AI 建议。
 - **📜 审查日志**：自动保存历史审查记录，便于随时查阅与回溯。
 
+--- 
+
 ## 🚀 快速开始
-
-### 1. 安装
-
-在项目中安装 `code-gate` 作为开发依赖：
-
-```bash
-npm i -D code-gate
-```
-
-### 2. 初始化
-
-提供一键初始化命令，自动配置 Git Hooks。
-
-**自动初始化（推荐）**
-
-```bash
-# 交互式选择 Git Hooks 或 Husky
-npx code-gate init
-```
-
-如果您已明确使用某种 Hook 管理方式，可以指定对应参数：
-
-- **原生 Git Hooks**: `npx code-gate init -m git`
-- **Husky**: `npx code-gate init -m husky`
-
-> 初始化完成后，您可选择将生成的配置文件添加到 `.gitignore` 中。
-
-### 3. 开始使用
-
-只需像往常一样提交代码：
-
-```bash
-git add .
-git commit -m "feat: new feature"
-```
-
-Code Gate 会自动拦截提交：
-1. 分析代码变更。
-<div align="left" style="margin-left: 20px">
-  <img src="assets/step1_cn.png" width="300" />
-</div>
-
-2. 启动本地服务并生成审查报告。
-
-3. 自动打开浏览器展示报告。
-
-4. 您可以在终端选择 **继续提交** 或 **取消修改**。
-<div align="left" style="margin-left: 20px">
-  <img src="assets/step3_cn.png" width="300" />
-</div>
-
----
-
-## ⚙️ 配置指南
-
-在项目根目录下 `.code-gate.js` 配置
-
-### 基础配置示例
-
+### 添加配置文件
+所有方案都会依赖配置文件执行，请先在项目根目录下添加 `.code-gate.js` 配置文件。
 ```javascript
 export default {
-  provider: 'ollama',
+  provider: 'ollama', // 默认使用 Ollama 本地模型，这里可以替换为其他模型如 DeepSeek
   providerOptions: {
     ollama: {
       baseURL: 'http://localhost:11434',
@@ -97,7 +44,8 @@ export default {
       baseURL: 'https://api.deepseek.com',
       apiKeyEnv: 'DEEPSEEK_API_KEY',
       model: 'deepseek-chat',
-      concurrencyFiles: 4
+      concurrencyFiles: 4,
+      apiKey: 'sk-xxxx' // 替换为您的 DeepSeek API 密钥（请不要直接暴露在公共代码中）
     }
     // openai: { baseURL: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY', model: 'gpt-4o-mini' },
     // anthropic: { baseURL: 'https://api.anthropic.com', apiKeyEnv: 'ANTHROPIC_API_KEY', model: 'claude-3-5-sonnet' },
@@ -116,50 +64,119 @@ export default {
     maxDiffLines: 10000,
     maxFiles: 100
   },
-  prompt: '作为资深代码审查工程师，从安全、性能、代码风格与测试覆盖角度审查本次变更，指出问题与改进建议，并给出必要的示例补丁。',
+  prompt: `您是一位高级代码评审员，负责确保代码质量和安全性达到高标准。
+
+项目信息:
+- [填入你项目相关信息：架构、规范、业务类型等]
+
+评审清单：
+- 代码简洁易读
+- 函数和变量命名规范
+- 无重复代码
+- 正确的错误处理
+- 已实现输入验证
+- 已考虑性能因素
+
+提供按优先级排序的反馈：
+- 关键问题（必须修复）
+- 警告（应该修复）
+- 建议（考虑改进，不是很必要的内容不要画蛇添足增加建议）
+
+提供具体的示例说明如何修复问题。`,
   output: {
     dir: '.review-logs'
   }
 }
 ```
 
-### API Key 配置方案
 
-根据自己项目需要，选择合适的配置方案。这里以deepseek为例。
-为了安全起见，建议不要将 API Key 暴露到公共仓库中。
 
-**方案 A：配置文件中**
+### 方式一：npx 零安装使用
 
-在 `.code-gate.js` 中设置：
-
-```javascript
-export default {
-  providerOptions: {
-    deepseek: {
-      // ...其他配置
-      apiKey: 'your-deepseek-api-key'
-    }
-  }
-}
-```
-
-**方案 B：Git Hook 注入**
-
-在 `.githooks/pre-commit` 或 `.husky/pre-commit` 中临时导出：
+无需安装依赖，直接审查最近一次提交（或指定 Commit）：
 
 ```bash
-#!/bin/sh
-export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+npx code-gate review <commit-hash>
+```
+
+或者审查暂存区的文件变更（Git Staged）：
+
+```bash
+npx code-gate review
+```
+
+> **提示**：首次运行时，如未找到配置文件 `.code-gate.js`，Code Gate 会自动创建默认配置文件 `.code-gate.js`。
+
+### 方式二：npm 包管理集成
+
+将 `code-gate` 作为开发依赖安装到项目中：
+
+```bash
+npm i -D code-gate
+```
+
+通过脚本命令手动触发审查：
+
+```bash
+# 审查暂存区变更
+npx code-gate review
+
+# 审查特定提交
+npx code-gate review <commit-hash>
+```
+
+### 方式三：Git Hook 自动化审查
+
+自动拦截 `git commit` 流程(完成审核后会询问是否继续提交)。
+
+#### 1. 安装
+
+在项目中安装 `code-gate` 作为开发依赖：
+
+```bash
+npm i -D code-gate
+```
+
+#### 2. 初始化
+
+您可以使用一键初始化命令，自动配置 Git Hooks，也可以手动配置。
+
+**2.1 自动初始化（推荐）**
+
+```bash
+# 交互式选择 Git Hooks 或 Husky
+npx code-gate init
+```
+
+如果您已明确使用某种 Hook 管理方式，可以指定对应参数：
+
+- **原生 Git Hooks**: `npx code-gate init -m git`
+- **Husky**: `npx code-gate init -m husky`
+
+> 初始化完成后，您可选择将生成的配置文件添加到 `.gitignore` 中。
+
+**2.2 手动配置**
+
+您也可以手动配置 Git Hooks，在pre-commit文件中添加（如项目根目录`.githooks/pre-commit`文件中）：
+```bash
+#!/usr/bin/env sh
 ./node_modules/.bin/code-gate-hook
 ```
 
-**方案 C：环境变量**
+#### 3. 自动触发
 
-在 `.env` 文件或系统环境变量中设置：
+只需像往常一样提交代码，Code Gate 会自动启动审查：
 
 ```bash
-export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+git add .
+git commit -m "feat: new feature"
 ```
+<div align="left" style="margin-left: 20px">
+   <img src="assets/step1_cn.png" width="300" />
+</div>
+
+
+---
 
 ## 📖 配置详解
 
@@ -210,6 +227,46 @@ export DEEPSEEK_API_KEY=[your-deepseek-api-key]
 | `backoffMs` | `number` | `300` | 重试间隔时间（毫秒） |
 
 > **注意**：`concurrencyFiles` 控制并发审查的文件数（默认 DeepSeek=4, Ollama=1, 其他=4）。
+
+### API Key 配置方案
+
+根据自己项目需要，选择合适的配置方案。这里以deepseek为例。
+为了安全起见，建议不要将 API Key 暴露到公共仓库中。
+
+**方案 A：配置文件中**
+
+在 `.code-gate.js` 中设置：
+
+```javascript
+export default {
+  providerOptions: {
+    deepseek: {
+      // ...其他配置
+      apiKey: 'your-deepseek-api-key'
+    }
+  }
+}
+```
+
+**方案 B：Git Hook 注入**
+
+在 `.githooks/pre-commit` 或 `.husky/pre-commit` 中临时导出：
+
+```bash
+#!/bin/sh
+export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+./node_modules/.bin/code-gate-hook
+```
+
+**方案 C：环境变量**
+
+在 `.env` 文件或系统环境变量中设置：
+
+```bash
+export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+```
+
+---
 
 ## ❓ 常见问题
 

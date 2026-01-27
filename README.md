@@ -10,6 +10,8 @@
 
 Code Gate is an intelligent code review tool seamlessly integrated into your Git workflow. When you run `git commit`, it automatically analyzes staged code changes, utilizing local LLMs (Ollama) or cloud AI services to provide instant feedback on code quality, security suggestions, and optimization plans.
 
+Supports zero-config execution via npx, npm/yarn/pnpm package integration, and automated Git Hook reviews, flexibly adapting to any development workflow.
+
 <div align="left">
   <img src="assets/review.png" alt="Code Gate example" width="100%" />
 </div>
@@ -26,67 +28,13 @@ Code Gate is an intelligent code review tool seamlessly integrated into your Git
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### Add Configuration File
 
-Install `code-gate` as a development dependency:
-
-```bash
-npm i -D code-gate
-```
-
-### 2. Initialization
-
-We provide a one-click initialization command to configure Git Hooks.
-
-**Automatic Init (Recommended)**
-
-```bash
-# Interactive selection for Git Hooks or Husky
-npx code-gate init
-```
-
-You can also specify arguments if you prefer a specific hook manager:
-
-- **Native Git Hooks**: `npx code-gate init -m git`
-- **Husky**: `npx code-gate init -m husky`
-
-> After initialization, you can choose to add the generated config file to `.gitignore`.
-
-### 3. Usage
-
-Just commit your code as usual:
-
-```bash
-git add .
-git commit -m "feat: new feature"
-```
-
-Code Gate intercepts the commit:
-1. Analyzes code changes.
-<div align="left" style="margin-left: 20px">
-   <img src="assets/step1.png" width="300" />
-</div>
-
-2. Starts a local server and generates a review report.
-
-3. Automatically opens the report in your browser.
-
-4. You choose to **Confirm Commit** or **Cancel** in the terminal.
-<div align="left" style="margin-left: 20px">
-   <img src="assets/step3.png" width="300" />
-</div>
-
----
-
-## ⚙️ Configuration
-
-The `code-gate.config.js` in your project root controls all behaviors.
-
-### Basic Configuration
+All methods rely on the configuration file. Please add a `.code-gate.js` file to your project root first.
 
 ```javascript
 export default {
-  provider: 'ollama',
+  provider: 'ollama', // Default using Ollama local model
   providerOptions: {
     ollama: {
       baseURL: 'http://localhost:11434',
@@ -97,7 +45,8 @@ export default {
       baseURL: 'https://api.deepseek.com',
       apiKeyEnv: 'DEEPSEEK_API_KEY',
       model: 'deepseek-chat',
-      concurrencyFiles: 4
+      concurrencyFiles: 4,
+      apiKey: 'sk-xxxx' // Replace with your API Key (Avoid exposing in public code)
     }
     // openai: { baseURL: 'https://api.openai.com/v1', apiKeyEnv: 'OPENAI_API_KEY', model: 'gpt-4o-mini' },
     // anthropic: { baseURL: 'https://api.anthropic.com', apiKeyEnv: 'ANTHROPIC_API_KEY', model: 'claude-3-5-sonnet' },
@@ -116,50 +65,110 @@ export default {
     maxDiffLines: 10000,
     maxFiles: 100
   },
-  prompt: 'as a senior code reviewer, please review the code changes and provide feedback on security, performance, code style, and test coverage. Highlight any issues or areas for improvement, and offer concrete suggestions with code examples if possible.',
+  prompt: `You are a senior code reviewer responsible for ensuring code quality and security meet high standards.
+
+Project Info:
+- [Fill in your project info: architecture, standards, business type, etc.]
+
+Review Checklist:
+- Code is clean and readable
+- Proper naming conventions for functions and variables
+- No code duplication
+- Correct error handling
+- Input validation implemented
+- Performance considerations addressed
+
+Provide feedback prioritized by:
+- Critical Issues (Must fix)
+- Warnings (Should fix)
+- Suggestions (Consider improving, avoid unnecessary suggestions if not essential)
+
+Provide specific examples on how to fix the issues.`,
   output: {
     dir: '.review-logs'
-  },
-}
-```
-
-### API Key Configuration
-
-Choose the appropriate configuration scheme based on your project needs. Taking deepseek as an example.
-For security, avoid hardcoding API Keys in the config file.
-
-**Option A: Config File**
-
-Set in `.code-gate.js`:
-
-```javascript
-export default {
-  providerOptions: {
-    deepseek: {
-      // ...other config
-      apiKey: 'your-deepseek-api-key'
-    }
   }
 }
 ```
 
-**Option B: Git Hook Injection**
+### Method 1: Zero-Install with npx
 
-Export temporarily in `.githooks/pre-commit` or `.husky/pre-commit`:
-
-```bash
-#!/bin/sh
-export DEEPSEEK_API_KEY=[your-deepseek-api-key]
-./node_modules/.bin/code-gate-hook
-```
-
-**Option C: Environment Variables (Recommended)**
-
-Set in your `.env` file or system environment:
+No installation required. Review the latest commit (or a specific commit) directly:
 
 ```bash
-export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+npx code-gate review <commit-hash>
 ```
+
+Or review staged file changes:
+
+```bash
+npx code-gate review
+```
+
+> **Note**: On first run, Code Gate automatically creates a default configuration file `.code-gate.js`.
+
+### Method 2: NPM Integration
+
+Install `code-gate` as a development dependency in your project:
+
+```bash
+npm i -D code-gate
+```
+
+Manually trigger reviews via script commands:
+
+```bash
+# Review staged changes
+npx code-gate review
+
+# Review a specific commit
+npx code-gate review <commit-hash>
+```
+
+### Method 3: Automated Git Hook Review
+
+The recommended way. Automatically intercepts `git commit` flows.
+
+#### 1. Installation
+
+Install `code-gate` as a development dependency:
+
+```bash
+npm i -D code-gate
+```
+
+#### 2. Initialization
+
+We provide a one-click initialization command to configure Git Hooks.
+
+**Automatic Init (Recommended)**
+
+```bash
+# Interactive selection for Git Hooks or Husky
+npx code-gate init
+```
+
+You can also specify arguments if you prefer a specific hook manager:
+
+- **Native Git Hooks**: `npx code-gate init -m git`
+- **Husky**: `npx code-gate init -m husky`
+
+> After initialization, you can choose to add the generated config file to `.gitignore`.
+
+#### 3. Usage
+
+Just commit your code as usual, and Code Gate will automatically start the review:
+
+```bash
+git add .
+git commit -m "feat: new feature"
+```
+
+<div align="left" style="margin-left: 20px">
+   <img src="assets/step1.png" width="300" />
+</div>
+
+
+---
 
 ## 📖 Configuration Details
 
@@ -212,6 +221,46 @@ Configure in `providerOptions.<provider>.request` to control request behavior:
 | `backoffMs` | `number` | `300` | Retry interval (ms) |
 
 > **Note**: `concurrencyFiles` controls the number of concurrent file reviews (Default: DeepSeek=4, Ollama=1, Others=4).
+
+### API Key Configuration
+
+Choose the appropriate configuration scheme based on your project needs. Taking deepseek as an example.
+For security, avoid hardcoding API Keys in the config file.
+
+**Option A: Config File**
+
+Set in `.code-gate.js`:
+
+```javascript
+export default {
+  providerOptions: {
+    deepseek: {
+      // ...other config
+      apiKey: 'your-deepseek-api-key'
+    }
+  }
+}
+```
+
+**Option B: Git Hook Injection**
+
+Export temporarily in `.githooks/pre-commit` or `.husky/pre-commit`:
+
+```bash
+#!/bin/sh
+export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+./node_modules/.bin/code-gate-hook
+```
+
+**Option C: Environment Variables (Recommended)**
+
+Set in your `.env` file or system environment:
+
+```bash
+export DEEPSEEK_API_KEY=[your-deepseek-api-key]
+```
+
+---
 
 ## ❓ FAQ
 

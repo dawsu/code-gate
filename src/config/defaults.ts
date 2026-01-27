@@ -28,8 +28,25 @@ export const defaultConfig: Config = {
   },
   reviewMode: 'files',
   language: 'en',
-  prompt:
-    'As a senior code review engineer, review this change from the perspectives of security, performance, code style, and test coverage. Point out issues and suggestions for improvement, and provide necessary example patches.',
+  prompt:`You are a senior code reviewer responsible for ensuring code quality and security meet high standards.
+
+Project Info:
+- [Fill in your project info: architecture, standards, business type, etc.]
+
+Review Checklist:
+- Code is clean and readable
+- Proper naming conventions for functions and variables
+- No code duplication
+- Correct error handling
+- Input validation implemented
+- Performance considerations addressed
+
+Provide feedback prioritized by:
+- Critical Issues (Must fix)
+- Warnings (Should fix)
+- Suggestions (Consider improving, avoid unnecessary suggestions if not essential)
+
+Provide specific examples on how to fix the issues.`,
   output: {
     dir: '.review-logs'
   }
