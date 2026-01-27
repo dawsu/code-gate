@@ -28,10 +28,16 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
     return true
   }
 
-  let diff = getStagedDiff()
-  if (!diff) {
-    // warn('code-gate: 未获取到 diff')
-    return true
+  // Only fetch global diff if we need a summary or if we need to check if diff exists (though files.length > 0 usually implies diff exists)
+  // But strictly speaking, we might want to skip this check for 'files' mode to avoid large buffer issues
+  let diff = ''
+  if (mode === 'summary' || mode === 'both') {
+    diff = getStagedDiff()
+    if (!diff) {
+      warn('code-gate: 无法获取完整 Diff (可能文件过大)，将跳过 Summary 生成')
+      // Fallback: Disable summary mode or proceed with empty diff?
+      // For now, let's just proceed. The provider might handle empty diff or we handle it in runSummary
+    }
   }
 
   const prompt = cfg.prompt || ''
@@ -146,7 +152,7 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
       frev = await provider.review({ prompt, diff: fdiff })
       aiSucceeded = aiSucceeded || !!frev
     } catch (e: any) {
-      // warn(`code-gate: 文件 ${f} 审查失败：${e?.message || e}`)
+      warn(`code-gate: 文件 ${f} 审查失败：${e?.message || e}`)
     }
     items.push({ file: f, review: frev, diff: fdiff || 'diff --git a/' + f + ' b/' + f, done: true })
     if (mode === 'files' && items.length === 1 && previewUrl) {
@@ -158,6 +164,7 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
 
   const queue = [...list]
   const workers: Promise<void>[] = []
+  
   for (let i = 0; i < Math.max(1, concurrency); i++) {
     const worker = (async () => {
       while (queue.length) {

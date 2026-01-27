@@ -3,26 +3,48 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import micromatch from 'micromatch'
 
-function runGit(args: string[]) {
-  const res = spawnSync('git', args, { encoding: 'utf8' })
-  if (res.status !== 0) return ''
+function runGit(args: string[], cwd?: string) {
+  // Increase maxBuffer to 10MB to handle large diffs
+  const res = spawnSync('git', args, { encoding: 'utf8', cwd, maxBuffer: 10 * 1024 * 1024 })
+  
+  if (res.error) {
+    // If it's a buffer issue or other spawn error, return empty string to handle gracefully upstream
+    return ''
+  }
+  
+  if (res.status !== 0) {
+    return ''
+  }
   return res.stdout || ''
 }
 
+export function getGitRoot(): string {
+  return runGit(['rev-parse', '--show-toplevel']).trim()
+}
+
 export function getStagedFiles(): string[] {
-  const out = runGit(['diff', '--staged', '--name-only'])
-  return out
+  const root = getGitRoot()
+  const out = runGit(['diff', '--staged', '--name-only'], root)
+  const files = out
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean)
+  return files
 }
 
 export function getStagedDiff(): string {
-  return runGit(['diff', '--staged'])
+  const root = getGitRoot()
+  console.log('[DEBUG] Git Root:', root)
+  // Run git diff from the root to ensure we capture all staged files correctly
+  const diff = runGit(['diff', '--staged'], root)
+  console.log('[DEBUG] git diff --staged length:', diff.length)
+  return diff
 }
 
 export function getStagedDiffForFile(file: string): string {
-  return runGit(['diff', '--staged', '--', file])
+  const root = getGitRoot()
+  // File path is already relative to root (from getStagedFiles), so we run from root
+  return runGit(['diff', '--staged', '--', file], root)
 }
 
 export function filterFiles(files: string[], fileTypes?: string[], exclude?: string[]): string[] {

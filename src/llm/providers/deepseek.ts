@@ -4,6 +4,7 @@ import { BaseLLMProvider, ReviewInput } from '../base.js'
 export class DeepSeekProvider extends BaseLLMProvider {
   async review(input: ReviewInput): Promise<string> {
     const opts = this.config.providerOptions?.deepseek
+    // Clean up baseURL to avoid issues with copy-pasted configs containing backticks
     const baseURL = (opts?.baseURL || 'https://api.deepseek.com').replace(/`/g, '').trim()
     const apiKeyEnv = opts?.apiKeyEnv || 'DEEPSEEK_API_KEY'
     const apiKey = process.env[apiKeyEnv] || opts?.apiKey
