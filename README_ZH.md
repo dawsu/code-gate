@@ -6,6 +6,8 @@
 
 # Code Gate
 
+![Node Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+
 **您的轻量级本地 AI 代码审查助手**
 
 Code Gate 是一款无缝集成到 Git 工作流中的智能代码AI审查工具。可视化展示代码变更与 AI 建议，帮助您快速定位问题并优化代码质量。
@@ -115,15 +117,27 @@ npx code-gate review
 npm i -D code-gate
 ```
 
+在 `package.json` 中添加脚本命令：
+
+```json
+{
+  "scripts": {
+    "review": "code-gate review"
+  }
+}
+```
+
 通过脚本命令手动触发审查：
 
 ```bash
 # 审查暂存区变更
-npx code-gate review
+npm run review
 
 # 审查特定提交
-npx code-gate review <commit-hash>
+npm run review <commit-hash>
 ```
+
+> 如果想要直接在命令行使用 `code-gate review`命令，可以将 `code-gate` 安装为全局依赖：`npm i -g code-gate`
 
 ### 方式三：Git Hook 自动化审查
 

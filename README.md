@@ -6,6 +6,8 @@
 
 # Code Gate
 
+![Node Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+
 **Your Lightweight Local AI Code Review Assistant**
 
 Code Gate is an intelligent code review tool seamlessly integrated into your Git workflow. When you run `git commit`, it automatically analyzes staged code changes, utilizing local LLMs (Ollama) or cloud AI services to provide instant feedback on code quality, security suggestions, and optimization plans.
@@ -114,15 +116,27 @@ Install `code-gate` as a development dependency in your project:
 npm i -D code-gate
 ```
 
+Add script command in `package.json`:
+
+```json
+{
+  "scripts": {
+    "review": "code-gate review"
+  }
+}
+```
+
 Manually trigger reviews via script commands:
 
 ```bash
 # Review staged changes
-npx code-gate review
+npm run review
 
 # Review a specific commit
-npx code-gate review <commit-hash>
+npm run review <commit-hash>
 ```
+
+> If you want to use the `code-gate review` command directly in the command line, you can install `code-gate` as a global dependency: `npm i -g code-gate`
 
 ### Method 3: Automated Git Hook Review
 
