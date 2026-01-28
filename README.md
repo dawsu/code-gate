@@ -32,7 +32,7 @@ Supports zero-config execution via npx, npm/yarn/pnpm package integration, and a
 
 ### Add Configuration File
 
-All methods rely on the configuration file. Please add a `.code-gate.js` file to your project root first.
+All methods rely on the configuration file. Please add a `.codegate.js` file to your project root first.
 
 ```javascript
 export default {
@@ -107,8 +107,6 @@ Or review staged file changes:
 ```bash
 npx code-gate review
 ```
-
-> **Note**: On first run, Code Gate automatically creates a default configuration file `.code-gate.js`.
 
 ### Method 2: NPM Integration
 
@@ -245,7 +243,7 @@ For security, avoid hardcoding API Keys in the config file.
 
 **Option A: Config File**
 
-Set in `.code-gate.js`:
+Set in `.codegate.js`:
 
 ```javascript
 export default {
