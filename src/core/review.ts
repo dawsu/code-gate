@@ -1,12 +1,12 @@
 import { loadConfig } from '../config/index.js'
 import { setLanguage, t } from '../locales/index.js'
-import { 
-  getStagedFiles, 
-  getStagedDiff, 
-  filterFiles, 
-  getStagedDiffForFile, 
-  getBranchName, 
-  getDiffStats, 
+import {
+  getStagedFiles,
+  getStagedDiff,
+  filterFiles,
+  getStagedDiffForFile,
+  getBranchName,
+  getDiffStats,
   getCommitMessage,
   getFilesFromCommit,
   getDiffFromCommit,
@@ -14,7 +14,8 @@ import {
   getCommitMessageFromHash,
   getDiffStatsFromCommit
 } from './git.js'
-import { createLLMProvider } from '../llm/index.js'
+import { createLLMProvider, createAgentProvider, supportsAgent } from '../llm/index.js'
+import type { AgentLLMProvider } from '../llm/base.js'
 import { renderHTMLLive, renderHTMLTabs } from '../ui/render/html.js'
 import { serveReview, saveOutput, triggerOpen } from '../ui/server.js'
 import { info as logInfo, warn } from '../utils/logger.js'
@@ -44,10 +45,25 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   const getMsg = opts.commitHash ? () => getCommitMessageFromHash(opts.commitHash!) : getCommitMessage
   const getStats = opts.commitHash ? () => getDiffStatsFromCommit(opts.commitHash!) : getDiffStats
 
-  const provider = createLLMProvider(cfg)
   const providerName = cfg.provider
   const mode = (cfg.reviewMode || 'files') as 'summary' | 'files' | 'both'
   const modelUsed = cfg.providerOptions?.[providerName]?.model || 'unknown'
+
+  // 判断是否启用 Agent 模式
+  const agentEnabled = cfg.agent?.enabled === true && supportsAgent(providerName)
+  const provider = agentEnabled ? createAgentProvider(cfg) : createLLMProvider(cfg)
+
+  // Agent 模式配置
+  const agentOptions = agentEnabled ? {
+    maxIterations: cfg.agent?.maxIterations ?? 5,
+    maxToolCalls: cfg.agent?.maxToolCalls ?? 10,
+    onToolCall: (call: { name: string }) => {
+      logInfo(`Agent 调用工具: ${call.name}`)
+    },
+    onIteration: (iteration: number, toolCalls: number) => {
+      logInfo(`Agent 迭代 ${iteration}, 工具调用: ${toolCalls}`)
+    }
+  } : null
 
   const allFiles = getFiles()
   
@@ -101,14 +117,28 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
   async function runSummary(): Promise<string> {
     try {
       aiInvoked = true
-      const s = await provider.review({ prompt, diff })
+      let s: string
+
+      // 根据模式选择审查方式
+      if (agentEnabled && agentOptions) {
+        // Agent 模式
+        s = await (provider as AgentLLMProvider).reviewWithAgent(
+          { prompt, diff, files: list },
+          agentOptions
+        )
+      } else {
+        // 普通模式
+        s = await provider.review({ prompt, diff })
+      }
+
       aiSucceeded = true
       return s || ''
-    } catch (e: any) {
-      warn(`code-gate: LLM 调用失败：${e?.message || e}`)
-      status = `LLM 调用失败：${e?.message || e}`
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e)
+      warn(`code-gate: LLM 调用失败：${errMsg}`)
+      status = `LLM 调用失败：${errMsg}`
       aiSucceeded = false
-      return `未生成 AI 审查结果。\n错误信息：${e?.message || e}`
+      return `未生成 AI 审查结果。\n错误信息：${errMsg}`
     }
   }
 
@@ -175,7 +205,7 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
 
   async function runTask(f: string) {
     let fdiff = getFileDiff(f)
-    
+
     // Check for max diff lines
     const maxDiffLines = cfg?.limits?.maxDiffLines || 10000
     const lines = fdiff.split('\n')
@@ -186,10 +216,23 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
     let frev = ''
     try {
       aiInvoked = true
-      frev = await provider.review({ prompt, diff: fdiff })
+
+      // 根据模式选择审查方式
+      if (agentEnabled && agentOptions) {
+        // Agent 模式：使用工具获取上下文
+        frev = await (provider as AgentLLMProvider).reviewWithAgent(
+          { prompt, diff: fdiff, files: [f] },
+          agentOptions
+        )
+      } else {
+        // 普通模式
+        frev = await provider.review({ prompt, diff: fdiff })
+      }
+
       aiSucceeded = aiSucceeded || !!frev
-    } catch (e: any) {
-      warn(`code-gate: 文件 ${f} 审查失败：${e?.message || e}`)
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e)
+      warn(`code-gate: 文件 ${f} 审查失败：${errMsg}`)
     }
     items.push({ file: f, review: frev, diff: fdiff || 'diff --git a/' + f + ' b/' + f, done: true })
     if (mode === 'files' && items.length === 1 && previewUrl) {
