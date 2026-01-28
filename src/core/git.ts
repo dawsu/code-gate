@@ -174,3 +174,25 @@ export function getCommitMessageFromHash(hash: string): string {
   const root = getGitRoot()
   return runGit(['log', '-1', '--pretty=%B', hash], root).trim()
 }
+
+export function getAllFiles(): string[] {
+  const root = getGitRoot()
+  const out = runGit(['ls-files'], root)
+  return out.split('\n').map((s) => s.trim()).filter(Boolean)
+}
+
+export function getFileContent(file: string): string {
+  const root = getGitRoot()
+  try {
+    const absPath = path.isAbsolute(file) ? file : path.join(root, file)
+    if (fs.existsSync(absPath)) {
+      return fs.readFileSync(absPath, 'utf8')
+    }
+  } catch {}
+  return ''
+}
+
+export function getStagedFileContent(file: string): string {
+  const root = getGitRoot()
+  return runGit(['show', `:0:${file}`], root)
+}

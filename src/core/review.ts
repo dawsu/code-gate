@@ -18,6 +18,7 @@ import { createLLMProvider } from '../llm/index.js'
 import { renderHTMLLive, renderHTMLTabs } from '../ui/render/html.js'
 import { serveReview, saveOutput, triggerOpen } from '../ui/server.js'
 import { info as logInfo, warn } from '../utils/logger.js'
+import { contextManager } from './context/manager.js'
 
 export interface ReviewFlowOptions {
   onProgress?: (file: string, index: number, total: number) => void
@@ -181,6 +182,17 @@ export async function runReviewFlow(opts: ReviewFlowOptions = {}): Promise<boole
     const lines = fdiff.split('\n')
     if (lines.length > maxDiffLines) {
       fdiff = lines.slice(0, maxDiffLines).join('\n') + t('cli.diffTruncated', { lines: lines.length })
+    }
+
+    // Attempt to get enhanced context (Smart Skeleton) for Java files
+    try {
+      const context = contextManager.getContext(f)
+      if (context) {
+        // Prepend context to the diff so the LLM sees it first
+        fdiff = context + '\n\n' + fdiff
+      }
+    } catch (e: any) {
+      warn(`code-gate: Failed to load context for ${f}: ${e?.message || e}`)
     }
 
     let frev = ''
